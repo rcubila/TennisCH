@@ -1,89 +1,82 @@
 package com.tennisch.tennisCH.security;
 
-
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.antlr.v4.runtime.Token;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import javax.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import javax.annotation.PostConstruct;
-
 
 @Component
 public class JwtUtil {
-    //Replace the SECRET_KEY with your own secure key
-    //Store the secret key in a secure configuration (like environment variables or a secure vault)
+
     private static final String SECRET_KEY = "your_very_long_and_secure_secret_key_at_least_32_characters";
-    private static final long JWT_TOKEN_VALIDITY = 60 * 60 * 1000; // 1 hour in milliseconds
+    private static final long JWT_TOKEN_VALIDITY = 60 * 60 * 1000; // 1 hour
     private final SecretKey key;
 
-    public JwtUtil(){
+    public JwtUtil() {
         this.key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(String userName){
+    public String generateToken(String username) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("userName", userName);
+        claims.put("username", username);
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(userName)
+                .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public Claims extractClaims(String token){
-        try{
-            return Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-        } catch (JwtException e) {
-            throw new RuntimeException("Invalid JWT token: " + e.getMessage());
-        }
+    public Claims extractClaims(String token) {
+        return Jwts.parser()
+                .setSigningKey(key)
+                .setAllowedClockSkewSeconds(600)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 
-    public String extractUsername(String token){
-        try{
-            return extractClaims(token).get("username", String.class);
-        } catch (Exception e){
-            return  null;
-        }
+
+    public String extractUsername(String token) {
+        return extractClaims(token).get("username", String.class);
     }
 
-    public boolean isTokenExpired(String token){
-        try {
-            return extractClaims(token).getExpiration().before(new Date());
-        } catch (JwtException e) {
-            return true;
-        }
+    public boolean isTokenExpired(String token) {
+        return extractClaims(token).getExpiration().before(new Date());
     }
 
-    public boolean validateToken(String token, String username){
-        try {
-            final String tokenUserName = extractUsername(token);
-            return (username.equals(tokenUserName) && !isTokenExpired(token));
-        } catch (Exception e) {
-            return false;
-        }
+    public boolean validateToken(String token, String username) {
+        final String tokenUsername = extractUsername(token);
+        return username.equals(tokenUsername) && !isTokenExpired(token);
     }
 
+    public UsernamePasswordAuthenticationToken generateAuthenticationToken(String token) {
+        String username = extractUsername(token);
+        if (username != null && !isTokenExpired(token)) {
+            return new UsernamePasswordAuthenticationToken(
+                    username,
+                    null,
+                    Collections.singletonList(() -> "ROLE_USER") // Add roles dynamically if needed
+            );
+        }
+        return null;
+    }
 
     @PostConstruct
     public void testTokenGeneration() {
         String token = generateToken("testUser");
         System.out.println("Sample Token: " + token);
     }
-
 }
