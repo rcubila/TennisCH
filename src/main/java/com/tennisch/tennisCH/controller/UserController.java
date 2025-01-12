@@ -1,5 +1,6 @@
 package com.tennisch.tennisCH.controller;
 
+import com.tennisch.tennisCH.exception.UserAlreadyExistsException;
 import com.tennisch.tennisCH.model.User;
 import com.tennisch.tennisCH.payload.response.ApiResponse;
 import com.tennisch.tennisCH.service.UserService;
@@ -11,9 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * REST controller for managing users.
- */
 @RestController
 @RequestMapping("api/users")
 public class UserController {
@@ -24,26 +22,38 @@ public class UserController {
         this.userService = userService;
     }
 
-    /**
-     * Retrieves all users.
-     *
-     * @return a list of all users.
-     */
     @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    public ResponseEntity<List<User>> getAllUsers() {
+        List<User> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
     }
 
-    /**
-     * Creates a new user.
-     *
-     * @param user the user to create.
-     * @return a response entity with creation status.
-     */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody User user) {
-        userService.createUser(user);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse(true, "User created successfully", null));
+        try {
+            userService.createUser(user);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ApiResponse(true, "User created successfully", null));
+        } catch (UserAlreadyExistsException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse(false, ex.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUserId(@PathVariable Long id){
+        User user = userService.getUserById(id);
+        return ResponseEntity.ok(user);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse> updateUser(@PathVariable Long id, @Valid @RequestBody User user){
+
+        return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", null));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse> deleteUser(@PathVariable Long id){
+        return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", null));
     }
 }

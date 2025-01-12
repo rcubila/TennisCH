@@ -5,20 +5,16 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.stereotype.Component;
-
 import javax.crypto.SecretKey;
-import javax.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-@Component
 public class JwtUtil {
 
-    private static final String SECRET_KEY = "your_very_long_and_secure_secret_key_at_least_32_characters";
+    private static final String SECRET_KEY = "Long and secure secret key at least 32 characters";
     private static final long JWT_TOKEN_VALIDITY = 60 * 60 * 1000; // 1 hour
     private final SecretKey key;
 
@@ -48,7 +44,6 @@ public class JwtUtil {
                 .getBody();
     }
 
-
     public String extractUsername(String token) {
         return extractClaims(token).get("username", String.class);
     }
@@ -68,15 +63,9 @@ public class JwtUtil {
             return new UsernamePasswordAuthenticationToken(
                     username,
                     null,
-                    Collections.singletonList(() -> "ROLE_USER") // Add roles dynamically if needed
+                    Collections.singletonList(() -> "USER") // Add roles dynamically
             );
         }
         return null;
-    }
-
-    @PostConstruct
-    public void testTokenGeneration() {
-        String token = generateToken("testUser");
-        System.out.println("Sample Token: " + token);
     }
 }

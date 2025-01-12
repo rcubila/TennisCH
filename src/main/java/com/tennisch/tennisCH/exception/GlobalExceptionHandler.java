@@ -10,14 +10,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import java.util.HashMap;
 import java.util.Map;
-
-/**
- * Global exception handler for the application.
- */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    //Handles validation exceptions globally.
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ResponseBody
@@ -28,10 +23,17 @@ public class GlobalExceptionHandler {
         return new ApiResponse(false, "Validation failed", errors);
     }
 
-   //Handles user already exists exception globally.
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiResponse> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiResponse(false, ex.getMessage(), null));
     }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ResponseBody
+    public ApiResponse handleUnexpectedError(Exception ex) {
+        return new ApiResponse(false, "An unexpected error occurred", null);
+    }
 }
+
