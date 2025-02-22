@@ -30,13 +30,50 @@ public class AuthController {
         this.userService = userService;
         this.bcryptPasswordEncoder = bcryptPasswordEncoder;
     }
+    @GetMapping("/test-hash")
+    public ResponseEntity<?> testHash() {
+        try {
+            String rawPassword = "123";
+            String hashedPassword = bcryptPasswordEncoder.encode(rawPassword);
+            return ResponseEntity.ok("Hashed Password: " + hashedPassword);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error occurred: " + e.getMessage());
+        }
+    }
+
+
+
+    @GetMapping("/test-login")
+    public ResponseEntity<?> testLogin() {
+        String rawPassword = "123";
+        String hashedPassword = "$2a$10$DhssNGtIwGgmO/XvAsfXOenM5d/uEm6ib2qCSJ5yj3J3/N4HGfhZ6"; // Your database hash
+        boolean matches = bcryptPasswordEncoder.matches(rawPassword, hashedPassword);
+
+        System.out.println("Raw Password: " + rawPassword);
+        System.out.println("Hashed Password: " + hashedPassword);
+        System.out.println("Matches: " + matches);
+
+        return ResponseEntity.ok("Password match result: " + matches);
+    }
+
+    @PostMapping("/debug-token")
+    public ResponseEntity<?> generateAdminToken(@RequestParam(defaultValue = "admin") String username) {
+        User user = userService.getUserByUsername(username);
+        if (user != null && user.getRole() == Role.ADMIN) {
+            String token = jwtUtil.generateToken(user.getUsername());
+            return ResponseEntity.ok(new LoginResponse(token));
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Admin user not found");
+    }
 
     @EventListener(ApplicationReadyEvent.class)
     public void createInitialUser() {
         if (userService.getAllUsers().isEmpty()) {
             User user = new User();
-            user.setUsername("raul");
-            user.setPassword("123");
+            user.setUsername("admin");
+            user.setPassword(bcryptPasswordEncoder.encode("123"));
             user.setEmail("raul@example.com");
             user.setFirstName("Raul");
             user.setLastName("Admin");
@@ -46,20 +83,40 @@ public class AuthController {
         }
     }
 
+
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        User user = userService.getAllUsers().stream()
-                .filter(u -> u.getUsername().equals(loginRequest.getUsername()))
-                .findFirst()
-                .orElse(null);
+        System.out.println("Login request received for username: " + loginRequest.getUsername());
 
-        if (user != null && bcryptPasswordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            String token = jwtUtil.generateToken(user.getUsername());
-            return ResponseEntity.ok(new LoginResponse(token));
+        User user = userService.getUserByUsername(loginRequest.getUsername());
+
+        if (user != null) {
+            System.out.println("User found: " + user.getUsername());
+            System.out.println("Encoded password in DB: " + user.getPassword());
+            System.out.println("Password provided: " + loginRequest.getPassword());
+
+            // Test password matching logic
+            boolean passwordMatches = bcryptPasswordEncoder.matches(loginRequest.getPassword(), user.getPassword());
+            System.out.println("Password matches: " + passwordMatches);
+
+            if (passwordMatches) {
+                String token = jwtUtil.generateToken(user.getUsername());
+                System.out.println("Password matches, token generated: " + token);
+                return ResponseEntity.ok(new LoginResponse(token));
+            } else {
+                System.out.println("Password does not match for user: " + loginRequest.getUsername());
+            }
         } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Credentials");
+            System.out.println("User not found: " + loginRequest.getUsername());
         }
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Credentials");
     }
+
+
+
+
 }
 
 @Data

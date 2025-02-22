@@ -21,7 +21,6 @@ public class SecurityConfig {
         this.jwtRequestFilter = jwtRequestFilter;
     }
 
-    // Define the BCryptPasswordEncoder bean
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -31,10 +30,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf().disable()
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/**").permitAll() // Allow login without authentication
+                        .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
+                        .requestMatchers("/api/auth/test-hash").permitAll() // Allow the test endpoint explicitly
                         .requestMatchers(HttpMethod.GET, "/api/users").permitAll() // Allow unauthenticated GET requests for /api/users
-                        .requestMatchers("/api/users/**").authenticated() // Require authentication for other user-related endpoints
-                        .anyRequest().authenticated() // Authentication for all other endpoints
+                        .anyRequest().authenticated() // All other endpoints require authentication
                 )
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

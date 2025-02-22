@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("api/users")
@@ -42,13 +43,16 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserId(@PathVariable Long id){
-        User user = userService.getUserById(id);
-        return ResponseEntity.ok(user);
+        Optional<User> user = userService.getUserById(id);
+        if(user.isPresent()){
+            return ResponseEntity.ok(user.get());
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse> updateUser(@PathVariable Long id, @Valid @RequestBody User user){
-
+        Optional<User> getUserById = userService.getUserById(id);
         return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", null));
     }
 
